@@ -15,17 +15,21 @@ EMAIL_TO_SHOP = {
 }
 
 def parse_number(text):
-    match = re.search(r'(\d+[.,]?\d*)', text)
+    """Извлекает число из текста и преобразует в рейтинг 0.000 - 3.000"""
+    match = re.search(r'(\d+)', text)
     if not match:
         return None
-    raw = match.group(1).replace(',', '.')
-    try:
-        number = float(raw)
-    except:
-        return None
-    if number > 10:
-        number = number / 1000
-    return round(max(0, min(number, 3)), 3)
+    raw = match.group(1)
+    
+    # Если число больше 999, преобразуем: 234560 -> 2.34560
+    if len(raw) > 3:
+        number = float(raw) / 100000
+    else:
+        number = float(raw) / 1000
+    
+    # Ограничиваем от 0 до 3
+    number = max(0, min(number, 3))
+    return round(number, 5)
 
 def process_emails():
     print("Подключение к Gmail...")
@@ -79,6 +83,7 @@ def process_emails():
             response = requests.post(API_URL, json={"shop_id": shop_id, "new_rating": rating})
             if response.status_code == 200:
                 print(f"✅ Рейтинг обновлён!")
+                mail.store(msg_id, '+FLAGS', '\\Seen')
             else:
                 print(f"❌ Ошибка API: {response.status_code}")
 
