@@ -1,9 +1,12 @@
 from email_parser import process_emails
+from flask import Flask
 
-def main():
-    print("Запуск парсера по запросу...")
+app = Flask(__name__)
+
+@app.route('/')
+def index():
     process_emails()
-    print("Готово!")
+    return "Парсер выполнен!"
 
 if __name__ == "__main__":
-    main()
+    app.run(host='0.0.0.0', port=10000)
