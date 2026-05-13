@@ -6,7 +6,7 @@ import os
 
 EMAIL = "daniljk09@gmail.com"
 PASSWORD = os.environ.get("GMAIL_PASSWORD", "ahae miip yiul rdkx")
-API_URL = "https://jewelry-api-xb0q.onrender.com/api/update-rating"
+API_URL = "https://jewelry-api.jewelry-api.workers.dev/api/update-rating"
 
 EMAIL_TO_SHOP = {
     "danil-jk@bk.ru": "long_beach_pearl",
@@ -15,24 +15,17 @@ EMAIL_TO_SHOP = {
 }
 
 def parse_number(text):
-    """Извлекает число и преобразует в рейтинг 0.000 - 3.000.
-       Если число больше 3.0 — возвращает None (некорректный рейтинг)"""
-    # Ищем последовательность цифр
+    """Извлекает число и преобразует в рейтинг 0.000 - 3.000"""
     match = re.search(r'(\d+)', text)
     if not match:
         return None
     
     raw = match.group(1)
-    
-    # Если цифр меньше двух — не можем определить
     if len(raw) < 2:
         return None
     
-    # Первая цифра — целая часть
     integer_part = raw[0]
-    
-    # Берём следующие цифры для округления до 3 знаков
-    decimal_raw = raw[1:5]  # до 4 цифр для правильного округления
+    decimal_raw = raw[1:5]
     
     if len(decimal_raw) >= 4:
         first_three = int(decimal_raw[:3])
@@ -55,10 +48,8 @@ def parse_number(text):
     except:
         return None
     
-    # Если рейтинг больше 3.0 — считаем ошибочным
-    if rating > 3.0:
-        return None
-    
+    if rating > 3:
+        rating = 3.0
     if rating < 0:
         rating = 0.0
     
@@ -108,21 +99,17 @@ def process_emails():
 
             rating = parse_number(body)
             if rating is None:
-                print(f"Число не найдено или рейтинг > 3.0")
+                print(f"Число не найдено в письме")
                 continue
 
             print(f"Найдено число → рейтинг: {rating}")
 
-            response = requests.post(API_URL, json={"shop_id": shop_id, "new_rating": rating})
+            response = requests.post(API_URL, json={"shopId": shop_id, "newRating": rating})
             if response.status_code == 200:
-                resp_data = response.json()
-                if resp_data.get("status") == "error":
-                    print(f"⚠️ API отклонил обновление: {resp_data.get('reason')}")
-                else:
-                    print(f"✅ Рейтинг обновлён!")
-                    mail.store(msg_id, '+FLAGS', '\\Seen')
+                print(f"✅ Рейтинг обновлён!")
+                mail.store(msg_id, '+FLAGS', '\\Seen')
             else:
-                print(f"❌ Ошибка API: {response.status_code}")
+                print(f"❌ Ошибка API: {response.status_code} - {response.text}")
 
         mail.close()
         mail.logout()
