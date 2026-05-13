@@ -15,21 +15,58 @@ EMAIL_TO_SHOP = {
 }
 
 def parse_number(text):
-    """Извлекает число из текста и преобразует в рейтинг 0.000 - 3.000"""
+    """Извлекает число и преобразует в рейтинг 0.000 - 3.000.
+       Правило: первая цифра — целая часть, следующие три — дробная.
+       234560 -> 2.3456 -> округляется до 2.346
+    """
+    # Ищем последовательность цифр
     match = re.search(r'(\d+)', text)
     if not match:
         return None
+    
     raw = match.group(1)
     
-    # Если число больше 999, преобразуем: 234560 -> 2.34560
-    if len(raw) > 3:
-        number = float(raw) / 100000
+    # Если цифр меньше двух — не можем определить
+    if len(raw) < 2:
+        return None
+    
+    # Первая цифра — целая часть
+    integer_part = raw[0]
+    
+    # Берём следующие цифры для округления до 3 знаков
+    decimal_raw = raw[1:5]  # до 4 цифр для правильного округления
+    
+    if len(decimal_raw) >= 4:
+        # Округляем 4 цифры до 3
+        first_three = int(decimal_raw[:3])
+        fourth = int(decimal_raw[3])
+        
+        if fourth >= 5:
+            first_three += 1
+            if first_three == 1000:
+                first_three = 0
+                integer_part = str(int(integer_part) + 1)
+        
+        decimal_part = str(first_three).zfill(3)
     else:
-        number = float(raw) / 1000
+        # Если меньше 4 цифр, просто дополняем нулями
+        decimal_part = decimal_raw.ljust(3, '0')
+    
+    # Собираем рейтинг
+    rating_str = f"{integer_part}.{decimal_part}"
+    
+    try:
+        rating = float(rating_str)
+    except:
+        return None
     
     # Ограничиваем от 0 до 3
-    number = max(0, min(number, 3))
-    return round(number, 5)
+    if rating > 3:
+        rating = 3.0
+    if rating < 0:
+        rating = 0.0
+    
+    return round(rating, 3)
 
 def process_emails():
     print("Подключение к Gmail...")
