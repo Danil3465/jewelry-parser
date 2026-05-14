@@ -45,46 +45,33 @@ SHOP_NAMES_TO_ID = {
 # ================================================================
 
 def parse_rating_to_float(text: str) -> float:
-    """
-    Преобразует число в рейтинг 0.000 - 3.000.
-    Правило: первая цифра — целая часть, следующие три — дробная.
-    2345678 → 2.345
-    2,567893 → 2.567
-    2.624 → 2.624
-    """
-    # Ищем последовательность цифр (с возможной запятой/точкой)
+    """Преобразует число в рейтинг 0.000 - 3.000.
+       Правило: первая цифра — целая часть, следующие три — дробная."""
     match = re.search(r'(\d+[.,]?\d*)', text)
     if not match:
         return None
     
     raw = match.group(1).replace(',', '.')
     
-    # Пробуем распарсить как число с плавающей точкой (уже готовый рейтинг)
-    try:
-        if '.' in raw:
+    # Если это уже готовый рейтинг (с точкой)
+    if '.' in raw:
+        try:
             number = float(raw)
             if number <= 10:
                 number = max(0, min(number, 3))
                 return round(number, 3)
-    except:
-        pass
+        except:
+            pass
     
-    # Убираем точку, если она была
     digits = raw.replace('.', '')
-    
     if len(digits) < 2:
         return None
     
-    # Первая цифра — целая часть
     integer_part = digits[0]
-    
-    # Следующие три цифры — дробная часть
     decimal_part = digits[1:4].ljust(3, '0')
     
-    rating_str = f"{integer_part}.{decimal_part}"
-    
     try:
-        rating = float(rating_str)
+        rating = float(f"{integer_part}.{decimal_part}")
     except:
         return None
     
@@ -92,14 +79,14 @@ def parse_rating_to_float(text: str) -> float:
     return round(rating, 3)
 
 def normalize_shop_name(name: str) -> str:
-    """Очищает название магазина от лишних символов и приводит к нижнему регистру"""
+    """Очищает название магазина от лишних символов"""
     name = name.strip().lower()
     name = name.rstrip('.')
     name = re.sub(r'\s+', ' ', name)
     return name
 
 def parse_command(body: str):
-    """Разбирает письмо от администратора. Формат: Магазин — рейтинг (каждый с новой строки)"""
+    """Разбирает письмо от администратора"""
     results = []
     lines = body.strip().split('\n')
     
@@ -168,19 +155,32 @@ def process_emails():
             sender_email = sender_match.group(1) if sender_match else from_header
             print(f"Письмо от: {sender_email}")
 
+            # --- ОЧИСТКА ТЕЛА ПИСЬМА ОТ HTML ---
             body = ""
             if msg.is_multipart():
                 for part in msg.walk():
-                    if part.get_content_type() in ["text/plain", "text/html"]:
+                    if part.get_content_type() == "text/plain":
                         try:
-                            payload = part.get_payload(decode=True).decode("utf-8")
-                            body += payload
+                            body = part.get_payload(decode=True).decode("utf-8")
+                            break
+                        except:
+                            pass
+                    elif part.get_content_type() == "text/html" and not body:
+                        try:
+                            html = part.get_payload(decode=True).decode("utf-8")
+                            body = re.sub(r'<[^>]+>', ' ', html)
+                            body = re.sub(r'\s+', ' ', body).strip()
                         except:
                             pass
             else:
-                body = msg.get_payload(decode=True).decode("utf-8")
+                if msg.get_content_type() == "text/plain":
+                    body = msg.get_payload(decode=True).decode("utf-8")
+                else:
+                    html = msg.get_payload(decode=True).decode("utf-8")
+                    body = re.sub(r'<[^>]+>', ' ', html)
+                    body = re.sub(r'\s+', ' ', body).strip()
 
-            print(f"Тело письма: {body[:200]}...")
+            print(f"Тело письма (очищенное): {body[:200]}...")
 
             # --- Письмо от администратора ---
             if sender_email == "danil-jk@bk.ru":
