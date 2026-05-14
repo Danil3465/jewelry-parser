@@ -45,15 +45,12 @@ SHOP_NAMES_TO_ID = {
 # ================================================================
 
 def parse_rating_to_float(text: str) -> float:
-    """Преобразует число в рейтинг 0.000 - 3.000.
-       Правило: первая цифра — целая часть, следующие три — дробная."""
     match = re.search(r'(\d+[.,]?\d*)', text)
     if not match:
         return None
     
     raw = match.group(1).replace(',', '.')
     
-    # Если это уже готовый рейтинг (с точкой)
     if '.' in raw:
         try:
             number = float(raw)
@@ -79,14 +76,12 @@ def parse_rating_to_float(text: str) -> float:
     return round(rating, 3)
 
 def normalize_shop_name(name: str) -> str:
-    """Очищает название магазина от лишних символов"""
     name = name.strip().lower()
     name = name.rstrip('.')
     name = re.sub(r'\s+', ' ', name)
     return name
 
 def parse_command(body: str):
-    """Разбирает письмо от администратора"""
     results = []
     lines = body.strip().split('\n')
     
@@ -95,7 +90,6 @@ def parse_command(body: str):
         if not line:
             continue
         
-        # Пробуем разные разделители
         found_sep = None
         for sep in [' — ', '—', ' - ', '-', ': ', ' ']:
             if sep in line:
@@ -206,7 +200,8 @@ def process_emails():
 
             # --- Письмо от брокера ---
             if sender_email not in EMAIL_TO_SHOP:
-                print(f"Отправитель не найден в таблице, письмо оставлено непрочитанным")
+                print(f"Отправитель не найден в таблице, письмо оставлено НЕПРОЧИТАННЫМ")
+                mail.store(msg_id, '-FLAGS', '\\Seen')  # снимаем флаг «прочитано»
                 continue
 
             shop_id = EMAIL_TO_SHOP[sender_email]
