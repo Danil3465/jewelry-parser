@@ -45,33 +45,56 @@ SHOP_NAMES_TO_ID = {
 # ================================================================
 
 def parse_rating_to_float(text: str) -> float:
+    """
+    Преобразует число в рейтинг 0.000 - 3.000.
+    Правило: первая цифра — целая часть, следующие три — дробная.
+    2345678 → 2.345
+    2,567893 → 2.567
+    2.624 → 2.624
+    """
+    # Ищем последовательность цифр (с возможной запятой/точкой)
     match = re.search(r'(\d+[.,]?\d*)', text)
     if not match:
         return None
+    
     raw = match.group(1).replace(',', '.')
+    
+    # Пробуем распарсить как число с плавающей точкой (уже готовый рейтинг)
     try:
-        number = float(raw)
+        if '.' in raw:
+            number = float(raw)
+            if number <= 10:
+                number = max(0, min(number, 3))
+                return round(number, 3)
+    except:
+        pass
+    
+    # Убираем точку, если она была
+    digits = raw.replace('.', '')
+    
+    if len(digits) < 2:
+        return None
+    
+    # Первая цифра — целая часть
+    integer_part = digits[0]
+    
+    # Следующие три цифры — дробная часть
+    decimal_part = digits[1:4].ljust(3, '0')
+    
+    rating_str = f"{integer_part}.{decimal_part}"
+    
+    try:
+        rating = float(rating_str)
     except:
         return None
     
-    if number > 10:
-        if number >= 10000:
-            number = number / 10000
-        elif number >= 1000:
-            number = number / 1000
-        else:
-            number = number / 10
-    
-    number = max(0, min(number, 3))
-    return round(number, 3)
+    rating = max(0, min(rating, 3))
+    return round(rating, 3)
 
 def normalize_shop_name(name: str) -> str:
     """Очищает название магазина от лишних символов и приводит к нижнему регистру"""
-    # Убираем точку в конце, лишние пробелы
     name = name.strip().lower()
-    # Убираем точку в конце, если есть
     name = name.rstrip('.')
-    # Убираем множественные пробелы
     name = re.sub(r'\s+', ' ', name)
     return name
 
@@ -85,7 +108,7 @@ def parse_command(body: str):
         if not line:
             continue
         
-        # Пробуем разные разделители: —, -, :, пробел
+        # Пробуем разные разделители
         found_sep = None
         for sep in [' — ', '—', ' - ', '-', ': ', ' ']:
             if sep in line:
@@ -98,7 +121,6 @@ def parse_command(body: str):
                 shop_name_raw = normalize_shop_name(parts[0])
                 rating_raw = parts[1].strip()
                 
-                # Ищем соответствие в словаре
                 matched_shop_id = None
                 for known_name, shop_id in SHOP_NAMES_TO_ID.items():
                     if shop_name_raw == known_name or known_name in shop_name_raw:
