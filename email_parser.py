@@ -8,17 +8,14 @@ EMAIL = "daniljk09@gmail.com"
 PASSWORD = os.environ.get("GMAIL_PASSWORD", "ahae miip yiul rdkx")
 API_URL = "https://jewelry-api.jewelry-api.workers.dev/api/update-rating"
 
-# ========== НАСТРОЙКИ (меняйте здесь при необходимости) ==========
-# Привязка email отправителя → ID магазина (для брокеров)
+# ========== НАСТРОЙКИ ==========
 EMAIL_TO_SHOP = {
     "alina119.1995@mail.ru": "huy_thanh_jewelry",
     "alina_belyayeva@mail.ru": "pnj_goldcoast",
 }
 
-# Отключённые магазины (на сайте будет прочерк)
 DISABLED_SHOPS = ["long_beach_pearl"]
 
-# Соответствие названий магазинов на сайте их ID (для команд с вашей почты)
 SHOP_NAMES_TO_ID = {
     "long beach pearl": "long_beach_pearl",
     "huy thanh jewelry": "huy_thanh_jewelry",
@@ -47,9 +44,7 @@ SHOP_NAMES_TO_ID = {
 }
 # ================================================================
 
-# --- РАЗБОР РЕЙТИНГА ИЗ ТЕКСТА ---
 def parse_rating_to_float(text: str) -> float:
-    """Преобразует число в рейтинг 0.000 - 3.000"""
     match = re.search(r'(\d+[.,]?\d*)', text)
     if not match:
         return None
@@ -59,7 +54,6 @@ def parse_rating_to_float(text: str) -> float:
     except:
         return None
     
-    # Определяем порядок числа
     if number > 10:
         if number >= 10000:
             number = number / 10000
@@ -71,32 +65,62 @@ def parse_rating_to_float(text: str) -> float:
     number = max(0, min(number, 3))
     return round(number, 3)
 
-# --- РАЗБОР КОМАНДЫ ИЗ ПИСЬМА (для danil-jk@bk.ru) ---
+def normalize_shop_name(name: str) -> str:
+    """Очищает название магазина от лишних символов и приводит к нижнему регистру"""
+    # Убираем точку в конце, лишние пробелы
+    name = name.strip().lower()
+    # Убираем точку в конце, если есть
+    name = name.rstrip('.')
+    # Убираем множественные пробелы
+    name = re.sub(r'\s+', ' ', name)
+    return name
+
 def parse_command(body: str):
     """Разбирает письмо от администратора. Формат: Магазин — рейтинг (каждый с новой строки)"""
     results = []
     lines = body.strip().split('\n')
+    
     for line in lines:
         line = line.strip()
         if not line:
             continue
-        # Разделители: —, :, пробел
-        for sep in [' — ', ': ', ' ']:
+        
+        # Пробуем разные разделители: —, -, :, пробел
+        found_sep = None
+        for sep in [' — ', '—', ' - ', '-', ': ', ' ']:
             if sep in line:
-                parts = line.split(sep, 1)
-                if len(parts) == 2:
-                    shop_name_raw = parts[0].strip().lower()
-                    rating_raw = parts[1].strip()
-                    for known_name, shop_id in SHOP_NAMES_TO_ID.items():
-                        if shop_name_raw == known_name or known_name in shop_name_raw:
-                            rating = parse_rating_to_float(rating_raw)
-                            if rating is not None:
-                                results.append((shop_id, rating))
-                            break
-                    break
+                found_sep = sep
+                break
+        
+        if found_sep:
+            parts = line.split(found_sep, 1)
+            if len(parts) == 2:
+                shop_name_raw = normalize_shop_name(parts[0])
+                rating_raw = parts[1].strip()
+                
+                # Ищем соответствие в словаре
+                matched_shop_id = None
+                for known_name, shop_id in SHOP_NAMES_TO_ID.items():
+                    if shop_name_raw == known_name or known_name in shop_name_raw:
+                        matched_shop_id = shop_id
+                        break
+                
+                if matched_shop_id:
+                    rating = parse_rating_to_float(rating_raw)
+                    if rating is not None:
+                        results.append((matched_shop_id, rating))
+                        print(f"  Распознано: {shop_name_raw} → {matched_shop_id}, рейтинг {rating}")
+                    else:
+                        print(f"  Не удалось распознать рейтинг в: {rating_raw}")
+                else:
+                    print(f"  Не найден магазин: {shop_name_raw}")
+            else:
+                print(f"  Не удалось разобрать строку: {line}")
+        else:
+            print(f"  Нет разделителя в строке: {line}")
+    
     return results
 
-# --- ОСНОВНОЙ ПАРСЕР ---
 def process_emails():
     print("Подключение к Gmail...")
     try:
@@ -122,22 +146,26 @@ def process_emails():
             sender_email = sender_match.group(1) if sender_match else from_header
             print(f"Письмо от: {sender_email}")
 
-            # Извлекаем тело письма
             body = ""
             if msg.is_multipart():
                 for part in msg.walk():
                     if part.get_content_type() in ["text/plain", "text/html"]:
                         try:
-                            body += part.get_payload(decode=True).decode("utf-8")
+                            payload = part.get_payload(decode=True).decode("utf-8")
+                            body += payload
                         except:
                             pass
             else:
                 body = msg.get_payload(decode=True).decode("utf-8")
 
-            # --- СЛУЧАЙ 1: Письмо от администратора (danil-jk@bk.ru) ---
+            print(f"Тело письма: {body[:200]}...")
+
+            # --- Письмо от администратора ---
             if sender_email == "danil-jk@bk.ru":
                 print("Обработка команды от администратора")
                 updates = parse_command(body)
+                if not updates:
+                    print("Не удалось распознать команды в письме")
                 for shop_id, rating in updates:
                     if shop_id in DISABLED_SHOPS:
                         print(f"Магазин {shop_id} отключён, рейтинг не обновлён")
@@ -154,7 +182,7 @@ def process_emails():
                         print(f"Ошибка отправки: {e}")
                 continue
 
-            # --- СЛУЧАЙ 2: Письмо от привязанного брокера ---
+            # --- Письмо от брокера ---
             if sender_email not in EMAIL_TO_SHOP:
                 print(f"Отправитель не найден в таблице, письмо оставлено непрочитанным")
                 continue
