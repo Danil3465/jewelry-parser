@@ -14,7 +14,7 @@ EMAIL_TO_SHOP = {
     "alina_belyayeva@mail.ru": "pnj_goldcoast",
 }
 
-DISABLED_SHOPS = ["long_beach_pearl"]
+DISABLED_SHOPS = []
 
 SHOP_NAMES_TO_ID = {
     "long beach pearl": "long_beach_pearl",
