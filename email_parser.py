@@ -12,6 +12,7 @@ API_URL = "https://jewelry-api.jewelry-api.workers.dev/api/update-rating"
 EMAIL_TO_SHOP = {
     "alina119.1995@mail.ru": "huy_thanh_jewelry",
     "alina_belyayeva@mail.ru": "pnj_goldcoast",
+    "ngocanhpipi@gmail.com": "golden_pearl",
 }
 
 DISABLED_SHOPS = []
