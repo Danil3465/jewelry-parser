@@ -17,6 +17,7 @@ EMAIL_TO_SHOP = {
 DISABLED_SHOPS = []
 
 SHOP_NAMES_TO_ID = {
+    # ===== НЯЧАНГ (старые) =====
     "long beach pearl": "long_beach_pearl",
     "huy thanh jewelry": "huy_thanh_jewelry",
     "pnj goldcoast nha trang": "pnj_goldcoast",
@@ -28,15 +29,37 @@ SHOP_NAMES_TO_ID = {
     "treasures of angkor": "treasures_of_angkor",
     "kim's jewellery": "kims_jewellery",
     "sjc nha trang": "sjc_nha_trang",
+
+    # ===== НЯЧАНГ (новые) =====
+    "golden pearl nha trang": "golden_pearl",
+    "shri pearl": "shri_pearl",
+    "pnj vincom": "pnj_vincom",
+    "sea pearl": "sea_pearl",
+    "thanh xuan": "thanh_xuan",
+    "hmc gemstone": "hmc_gemstone",
+    "q jewelry": "q_jewelry",
+    "ame jewelry": "ame_jewelry",
+    "jewelm workshop": "jewelm_workshop",
+
+    # ===== PRINCESS JEWELRY (три разных адреса) =====
+    "princess 1": "princess_jewelry_1",   # Nguyễn Thiện Thuật
+    "princess 2": "princess_jewelry_2",   # Nguyễn Thị Minh Khai
+    "princess 3": "princess_jewelry_3",   # AB Central Square
+
+    # ===== ДАНАНГ =====
     "pnj da nang": "pnj_da_nang",
     "sjc da nang": "sjc_da_nang",
     "doji da nang": "doji_da_nang",
     "jemmia da nang": "jemmia_da_nang",
     "hanh hoa jewelry": "hanh_hoa_jewelry",
+
+    # ===== ФУКУОК =====
     "sjc phu quoc": "sjc_phu_quoc",
     "long bin jewelry": "long_bin_jewelry",
     "pnj phu quoc": "pnj_phu_quoc",
     "phu quoc pearl": "phu_quoc_pearl",
+
+    # ===== ХОШИМИН =====
     "sjc ho chi minh": "sjc_ho_chi_minh",
     "pnj headquarters": "pnj_headquarters",
     "doji hcmc": "doji_hcmc",
@@ -201,7 +224,7 @@ def process_emails():
             # --- Письмо от брокера ---
             if sender_email not in EMAIL_TO_SHOP:
                 print(f"Отправитель не найден в таблице, письмо оставлено НЕПРОЧИТАННЫМ")
-                mail.store(msg_id, '-FLAGS', '\\Seen')  # снимаем флаг «прочитано»
+                mail.store(msg_id, '-FLAGS', '\\Seen')
                 continue
 
             shop_id = EMAIL_TO_SHOP[sender_email]
